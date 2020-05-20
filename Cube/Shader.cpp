@@ -10,8 +10,13 @@ void Shader::load_shaders()
 		return;
 	}
 
-	compile_shader(GL_VERTEX_SHADER);
-	compile_shader(GL_FRAGMENT_SHADER);
+	std::string vertexString = load_shader_file("vertex.glsl");
+	std::string fragmentString = load_shader_file("fragment.glsl");
+	const char* vertex_code = vertexString.c_str();
+	const char* fragment_code = fragmentString.c_str();
+
+	compile_shader(GL_VERTEX_SHADER, vertex_code);
+	compile_shader(GL_FRAGMENT_SHADER, fragment_code);
 
 	GLint result = 0;
 	GLchar error_log[1024] = { 0 };
@@ -42,55 +47,39 @@ void Shader::load_shaders()
 
 }
 
-void Shader::compile_shader(GLenum shader_type)
+void Shader::compile_shader(GLenum shader_type, const char* shader_code)
 {
-	char* file_data = new char[1024];
-	if (shader_type == GL_VERTEX_SHADER)
-	{
-		load_shader_file("vertex.glsl", file_data);
-	}
-	else
-	{
-		load_shader_file("fragment.glsl", file_data);
-	}
+	printf("%s", shader_code);
 
-	printf("%s", file_data);
+	GLuint shader = glCreateShader(shader_type);
+	const GLchar* code[1];
+	code[0] = shader_code;
 
+	GLint code_length[1];
+	code_length[0] = strlen(shader_code);
+
+	glShaderSource(shader, 1, code, code_length);
+	glCompileShader(shader);
+
+	// Check for shader compilation error.
 	GLint result = 0;
 	GLchar error_log[1024] = { 0 };
 
-	GLuint empty_shader = glCreateShader(shader_type);
-	const GLchar* code[1];
-	code[0] = file_data;
-
-	GLint code_length[1];
-	code_length[0] = strlen(file_data);
-
-	glShaderSource(empty_shader, 1, code, code_length);
-	glCompileShader(empty_shader);
-
-	// Check for shader compilation error.
-	glGetShaderiv(shaderId, GL_COMPILE_STATUS, &result);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &result);
 
 	if (!result) {
-		glGetShaderInfoLog(empty_shader, sizeof(error_log), NULL, error_log);
+		glGetShaderInfoLog(shader, sizeof(error_log), NULL, error_log);
 		printf("Error compiling the shader: %s \n", error_log);
 		return;
 	}
 
-	glAttachShader(shaderId, empty_shader);
-
-	delete(file_data);
+	glAttachShader(shaderId, shader);
 }
 
-void Shader::load_shader_file(std::string file_name, char* data)
+std::string Shader::load_shader_file(std::string file_name)
 {
-	std::ifstream file;
-	file.open(file_name);
-
-	while (!file.eof()) {
-		for (int i = 0; i <= 1024; i++) {
-			data[i] = file.get();
-		}
-	}
+	std::ifstream file(file_name, std::ios::in);
+	std::string content((std::istreambuf_iterator<char>(file)),
+		(std::istreambuf_iterator<char>()));
+	return content;
 }
